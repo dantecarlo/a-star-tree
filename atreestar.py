@@ -1,186 +1,179 @@
-# Build an N-Tree from 2D array of Parent-Child pairs
+import math
 
-import logging
-from collections import deque
+class Node():
 
-"""
-   TREE:
-            3
-          / | \
-        4   5  6
-           / \
-          7   8
-         /
-        9
-        
-    ALGO:
-       - ASSOCIATIVE MAP; ACCUMULATING EDGEs per Parent node!
-       - LOOKUP PARENT to ACCUMULATE CHILDREN for PARENT at ANY Level!
-       - WALK up from ANY EDGE to LOOKUP PARENT where Node.Parent == None
-         to find GLOBAL ROOT of tree
-       - DEPTH-WALK is similar; and O(logN)
-"""
+  def __init__(self,key,cost=0,parent=None,distance=0):
+    self.key = key
+    self.distance = distance
+    self.cost = cost
+    self.children = []
 
-class Node:
+    self.left = None
+    self.right = None
 
-    # ATTN:
-    # - remember __ for ctor
-    # - remember self
-    # - OK to just reference self elements for declaration
-    def __init__(self, key, parent = None):
-        self.key = key
-        # ATTN:  multiple children
-        self.children = []
-        self.parent = parent
-      
-    # ATTN:  override for logging contnents!  
-    # https://stackoverflow.com/questions/44342081/correct-way-to-write-repr-function-with-inheritance
-    # RECALL for toString()
-    # ATTN:  Python 1-line conditional assignment!
-    # TODO: PYTHON for getting List of keys only from children nodes list using list comp
-    def __repr__(self):
-      return ("NODE content is:  key:{}, children:{}, parent:{}\n".format(self.key, self.children, None if self.parent is None else self.parent.key))
-        
-# PUNT:  SIMPLISTIC INTEGER KEY to ACCUM/MAP PARENT at EACH Level to LIST of children 
-#         eg 3 has children 4,5,6
-#         TRICK:  accum Dict with value of LIST; LOOKUP by INTEGER key value
-def buildTreeV1(data):
+    self.parent = parent
 
-  accumTree = {}
-  for edge in data:
-    print(edge)
-    if (edge[0] in accumTree):
-      accumTree[edge[0]].append(edge[1])
+  def __repr__(self):
+    return ("NODE content is:  key:{}, children:{}, parent:{}\n".format(self.key, self.children, None if self.parent is None else self.parent.key)) 
+    
+
+class Tree():
+
+  def __init__(self):
+    self.root = None    
+    
+
+  def search(self,key,node=None,cont=0):
+
+    if node is None:
+      node = self.root
+
+    if self.root.key == key:
+      print("Found")
+      return self.root
+    
+    if node.key == key:
+        print("Found")
+        return node
+
+    elif cont < len(node.children):
+      if key == node.children[cont].key:
+        print("Found")
+        return node
+      return self.search(key,node,cont+1)              
+              
     else:
-      accumTree[edge[0]] = [ edge[1], ]
+        print("Not found")
+        return None
       
-  print("BUILT TREE IS:  ")    
-  print(accumTree)
-  
-  return None
-          
-# ITER2
-# Load ALL NODES indexed by KEY to support LOOKUP
-# Edges can be specified in ANY ORDER, 
-# NEEDs to ESTABLISH BOTH endpoints to capture DIRECTIONAL LOOKUP
-# to EITHER PARENT or CHILD!
-def buildTreeV2(data):
-  
-  accumTree = {}
-  
-  # TRICK1:  CONSTRUCT and KEY-INDEX NODE to support LATER LINK LOOKUPS!  NOT doing LINKs yet!
-  for edge in data:
-    accumTree[edge[0]] = Node(edge[0])
-    accumTree[edge[1]] = Node(edge[1])
-  
-  # TRICK2: 
-  for edge in data:
-    # ATTENTION!  need to append NODE via LOOKUP to prior-populated KEY => NODE map!
-    if accumTree[edge[0]] is None:
-      accumTree[edge[0]].children = [ accumTree[edge[1]], ]
+
+
+  def add_node(self,key,key2=None,node=None,cost=0):
+
+    if node is None:
+      node = self.root
+    
+    if self.root is None:
+      self.root = Node(key)
+      print("Added")
+
     else:
-      accumTree[edge[0]].children.append( accumTree[edge[1]] )
-    # TRACK PARENT in OTHER direction for EACH child!
-    accumTree[edge[1]].parent = accumTree[edge[0]]
+      if self.search(key,node) is None:
+        print("Key not found, nothing done")
+        return False
+      else:
+        node = self.search(key,node)
+        distance = math.sqrt((key2[0]-key[0])**2+(key2[1]-key[1])**2)
+        node.children.append(Node(key2,cost,node,distance))
+        print("Added")
+        return True
+  
+  
+
+  def delete_node(self,key,node=None):
+    #search for the node to be deleted in tree
+    if node is None:
+      node = self.search(key)#return the node to be deleted
+
+    #root has no parent node  
+    if self.root.key == node.key: #if it is root
+      parent_node = self.root
+    else:
+      parent_node = node.parent
+      
+
+    '''case 1: The node has no chidren'''
+    if node.left is None and node.right is None:
+      if key <= parent_node.key:
+        parent_node.left = None
+      else:
+        parent_node.right = None
+      return
+
+    '''case 2: The node has children'''
+    ''' if it has a single left node'''
+    if node.left is not None and node.right is None :
+      if node.left.key < parent_node.key : 
+        parent_node.left = node.left
+      else:
+        parent_node.right = node.left
+
+      return
+
+    '''if it has a single right node'''
+    if node.right is not None and node.left is None:
+      if node.key <= parent_node.key:
+        parent_node.left = node.right
+      else:
+        parent_node.right = node.right
+      return
+
+    '''if it has two children'''
+    '''find the node with the minimum value from the right subtree.
+       copy its value to thhe node which needs to be removed.
+       right subtree now has a duplicate and so remove it.'''
+    if node.left is not None and node.right is not None:
+      min_value = self.find_minimum(node)
+      node.key = min_value.key
+      min_value.parent.left = None
+      return
+
+
+  def find_minimum(self,node = None):
     
-  return accumTree
-  
-def findGlobalRoot(accumTree):
-  # find the GLOBAL ROOT; THEN walk down the tree
-  allNodes = accumTree.values()
-  # print(allNodes)
-  
-  # TRICK3:  FILTER trick, and Python3 needs to materialize LIST
-  globalRootList = list(filter(lambda x: (x.parent is None), allNodes))
-  # print("TYPE IS:  ")
-  # print(type(globalRootList))
-  # print("CONTENT IS:  ")
-  # print(globalRootList)
-  globalRoot = globalRootList[0]
-  # print(type(globalRoot))
-  # print("GLOBAL ROOT KEY IS:")
-  # print(globalRoot.key)
-  return globalRoot
+    if node is None:
+      node = self.root
 
-# ATTN:  use deque as efficient for removing from FRONT of Q
-def traverseBFS(accumTree):
-  
-  globalRoot = findGlobalRoot(accumTree)
-  
-  # TRICK4:  Use deque as more efficient than List for Q in Python!
-  bfsQ = deque()
-  bfsQ.append(globalRoot)
-  while bfsQ:
-    currNode = bfsQ.popleft()
-    print (currNode.key)
-    nextChildren = currNode.children
-    bfsQ.extend(nextChildren)
+    '''find mimimum value from the right subtree'''
     
-# ATTN:  OK to use List as stack as insert-removal from SAME-SIDE!
-#        OTHERWISE, use deque
-def traverseDFS(node):
+    '''case when there is only a root node'''
+    if node.right is not None:
+      node = node.right
+    else:
+      return node
 
-  # nonsense case, exit
-  if (node is None):
-    return
-  
-  # testing for LEAF to print at MAX DEPTH; EXIT condition
-  if not node.children:
-    print(node.key)
-  else:
-    for child in node.children:
-        traverseDFS(child)
-    # print current value AFTER RECURSE to depth
-    print(node.key)
+    if node.left is not None:
+      return self.find_minimum(node = node.left)
+    else:
+      return node
+
+  def tree_data(self,node=None):
+    if node is None:
+      node = self.root
+
+    stack = []
+    while stack or node:
+      if node is not None:
+        stack.append(node)
+        node = node.left
+      else:
+        node = stack.pop()
+        yield node.key
+        node = node.right
+
+
+
     
-    
-# **************** DRIVER to test tree build with EXCEPTION-HANDLING!  ***************
-try:
+      
+t=Tree()
+t.add_node([3,1])
 
-  """
-  print("TEST1:  Load 1-Edge Tree, Level 0, 1")
-  testData1 = [[1,2]]
-  print "INPUT IS:  \n{}".format(testData1)
-  rootTree1 = buildTree(testData1)
-  print(rootTree1)
-  """
-  
-  """
-  print("TEST2:  Load LEVEL1 of 3-Edge Tree")
-  testData2  = [[3,6], [3,4], [3,5]]
-  print("INPUT IS:  \n{}".format(testData2))
-  rootTree2 = buildTreeV2(testData2)
-  print("\n*** BUILT TREE DICT IS:  ")
-  print(rootTree2)
-  """
 
-  # ATTN:  PRINT gets CONFUSING AFTER MULTI-LEVELS due to NESTED DEPTH content!
-  #        SO, need function AROUND printing CHILDREN that sets MAX-DEPTH!
-  """
-  print("TEST3:  Load LEVEL2 of N-Edge tree")
-  testData3  = [[5,7], [3,6], [3,4], [5,8], [3,5]]
-  print("INPUT IS:  \n{}".format(testData3))
-  rootTree3 = buildTreeV2(testData3)
-  print("\n*** BUILT TREE DICT IS:  ")
-  print(rootTree3)
-  """
-  
-  print("TEST4:  Load LEVEL3 of N-Edge tree")
-  testData3  = [[5,7], [3,6], [3,4], [5,8], [3,5], [7,9]]
-  print("INPUT IS:  \n{}".format(testData3))
-  rootTree3 = buildTreeV2(testData3)
-  print("\n*** BUILT TREE DICT IS:  ")
-  print(rootTree3)
-  
-  print("\n*** BFS TRAVERSAL OF TREE IS:  ")
-  traverseBFS(rootTree3)
-  
-  print("\n*** DFS TRAVERSAL OF TREE IS:  ")
-  globalRoot = findGlobalRoot(rootTree3)
-  traverseDFS(globalRoot)
-  
-except Exception as ex:
 
-  print(ex)
-  # TODO:  repl.it doesn't show this in output!
-  logging.exception(ex)
+t.add_node([3,1],[2,2])
+t.add_node([3,1],[1,2])
+t.add_node([1,2],[0,0])
+
+t.search([0,0])
+
+
+
+
+'''
+t.add_node(13)
+t.add_node(14)
+t.add_node(8)
+t.add_node(9)
+t.add_node(7)
+t.add_node(11)
+'''

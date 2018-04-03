@@ -7,10 +7,6 @@ class Node():
     self.distance = distance
     self.cost = cost
     self.children = []
-
-    self.left = None
-    self.right = None
-
     self.parent = parent
 
   def __repr__(self):
@@ -23,33 +19,26 @@ class Tree():
     self.root = None    
     
 
-  def search(self,key,node=None,cont=0):
+
+
+  def search(self,key,node=None):
 
     if node is None:
       node = self.root
 
-    if self.root.key == key:
-      print("Found")
-      return self.root
-    
+
     if node.key == key:
-        print("Found")
+        #print("Found")
         return node
 
-    elif cont < len(node.children):
-      if key == node.children[cont].key:
-        print("Found")
-        return node
-      return self.search(key,node,cont+1)              
-              
-    else:
-        print("Not found")
-        return None
-      
+    else: 
+      for child in node.children:
+        #print("In")
+        self.search(key,child)
 
 
   def add_node(self,key,key2=None,node=None,cost=0):
-
+    #print("add")
     if node is None:
       node = self.root
     
@@ -62,8 +51,9 @@ class Tree():
         print("Key not found, nothing done")
         return False
       else:
+
         node = self.search(key,node)
-        print(node)
+        #print(node)
         distance = math.sqrt((key2[0]-key[0])**2+(key2[1]-key[1])**2)
         node.children.append(Node(key2,cost,node,distance))
         print("Added")
@@ -73,21 +63,16 @@ class Tree():
 
 
 
-  def tree_data(self,node=None,cont=0,stack=[]):
+  def tree_data(self,node=None,stack=[]):
 
 
     if node is None:
       node = self.root
 
     stack.append(node.key)
-    print(len(node.children))
-    if cont < len(node.children):
-      print("IN")
-      #print(len(node.children))
-      #stack.append(node.children[cont].key)
-      return self.tree_data(node.children[cont],cont+1,stack)              
-              
-    
+    for child in node.children:
+        self.tree_data(child,stack)            
+        
     return stack
 
 
@@ -103,18 +88,8 @@ t.add_node([3,1],[2,2])
 t.add_node([3,1],[1,2])
 t.add_node([1,2],[0,0])
 
-t.search([0,0])
-print("data")
+print(t.search([0,0]))
+
 print(t.tree_data())
-
-
-
-
-'''
-t.add_node(13)
-t.add_node(14)
-t.add_node(8)
-t.add_node(9)
-t.add_node(7)
-t.add_node(11)
-'''
+#print("data")
+#print(t.tree_data())
